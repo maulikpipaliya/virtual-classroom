@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import User from "../../models/userModel.js";
 import colors from "colors";
 import Role from "../../models/roleModel.js";
+import { getRoleFromUserId } from "../../models/modelHelpers.js";
 
 export const protect = asyncHandler(async (req, res, next) => {
     console.log("Verifying that user is authenticated");
@@ -16,13 +17,17 @@ export const protect = asyncHandler(async (req, res, next) => {
 
             const decoded = jwt.verify(token, process.env.JWT_PASSWORD);
 
+            console.log("decoded");
+            console.log(decoded);
             //does not include password
             req.user = await User.findOne({
+                _id: decoded._id,
                 username: decoded.username,
                 role: decoded.role,
             }).select("-password");
 
             console.log("User is authenticated".green);
+            return next();
         } catch (error) {
             console.error(error);
             res.status(401);
@@ -34,18 +39,15 @@ export const protect = asyncHandler(async (req, res, next) => {
         res.status(401);
         throw new Error("Not authorized, no token");
     }
-    next();
 });
 
 export const admin = asyncHandler(async (req, res, next) => {
     console.log("Verifying that user is admin");
 
     try {
-        const { _id: roleIdOfAdmin } = await Role.findOne({
-            roleName: "ADMIN",
-        });
+        const roleDetails = await getRoleFromUserId(req.user._id);
 
-        if (req.user.role.equals(roleIdOfAdmin)) {
+        if (roleDetails && roleDetails.roleName === "ADMIN") {
             console.log("Verified that user is admin".green);
             next();
         } else {
@@ -64,11 +66,8 @@ export const admin = asyncHandler(async (req, res, next) => {
 
 export const tutor = asyncHandler(async (req, res, next) => {
     try {
-        const { _id: roleIdOfTutor } = await Role.findOne({
-            roleName: "TUTOR",
-        });
-
-        if (req.user.role.equals(roleIdOfTutor)) {
+        const roleDetails = await getRoleFromUserId(req.user._id);
+        if (roleDetails && roleDetails.roleName === "TUTOR") {
             console.log("Verified that user is tutor".green);
             next();
         } else {
@@ -87,10 +86,10 @@ export const tutor = asyncHandler(async (req, res, next) => {
 
 export const student = asyncHandler(async (req, res, next) => {
     try {
-        const { _id: roleIdOfStudent } = await Role.findOne({
-            roleName: "STUDENT",
-        });
-        if (req.user.role.equals(roleIdOfStudent)) {
+        console.log("Verifying that user is student".red);
+        const roleDetails = await getRoleFromUserId(req.user._id);
+
+        if (roleDetails && roleDetails.roleName === "STUDENT") {
             console.log("Verified that user is student".green);
             next();
         } else {
@@ -105,9 +104,4 @@ export const student = asyncHandler(async (req, res, next) => {
             error,
         });
     }
-
-    if (req.role.roleName === "STUDENT") {
-        next();
-    }
-    return res.status(401).send("Not authorized, not a student");
 });

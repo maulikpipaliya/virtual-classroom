@@ -6,6 +6,7 @@ import tutorRouter from "./api/routes/tutor/tutorRoutes.js";
 import commonRouter from "./api/routes/commonRoutes.js";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
+import cors from "cors";
 import { notFound, errorHandler } from "./api/middlewares/error.js";
 
 //Swagger
@@ -26,11 +27,18 @@ const swaggerOptions = {
             servers: ["http://localhost:3000"],
         },
     },
-    apis: ["app.js"],
+    apis: ["app.js", "./api/routes/commonRoutes.js"],
+    servers: [
+        {
+            url: "http://localhost:3000",
+            description: "Development server",
+        },
+    ],
 };
 
 //swagger-ui
 
+app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -50,12 +58,12 @@ app.use(
 app.use("/api", commonRouter);
 
 /**
- * @swagger 
+ * @swagger
  * /users:
  *  get:
  *      description: Get all users
- * 
-*/
+ *
+ */
 
 app.use("/api/users", userRouter);
 app.use("/api/tutor", tutorRouter);

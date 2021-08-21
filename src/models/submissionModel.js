@@ -26,6 +26,8 @@ const submissionSchema = new mongoose.Schema({
     },
 });
 
+submissionSchema.index({ assignmentID: 1, studentID: 1 }, { unique: true });
+
 //capitalize status before saving
 submissionSchema.pre("save", async function (next) {
     if (submissionStatusScope.includes(this.status)) {

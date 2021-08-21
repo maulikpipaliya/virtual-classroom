@@ -3,6 +3,7 @@ import generateAuthToken from "../../services/auth.js";
 import User from "../../models/userModel.js";
 import Role from "../../models/roleModel.js";
 import { allRoles } from "../../models/roleModel.js";
+import mongoose from "mongoose";
 
 export const registerUser = asyncHandler(async (req, res, next) => {
     //register a user
@@ -73,6 +74,9 @@ export const signIn = asyncHandler(async (req, res) => {
             console.log("Equal");
             const token = generateAuthToken(existingUser);
 
+            console.log("token");
+            console.log(token);
+
             const { roleName } = await Role.findById(existingUser.role);
             console.log(
                 `${existingUser.username} has signed in and role is ${roleName}`
@@ -81,6 +85,7 @@ export const signIn = asyncHandler(async (req, res) => {
             res.status(200).json({
                 success: true,
                 token,
+                roleName
             });
         } else {
             res.status(400).json({
@@ -160,14 +165,30 @@ export const getUsers = asyncHandler(async (req, res) => {
     }
 });
 
-export const getUserByUsername = asyncHandler(async (req, res) => {
-    const username = req.params.username;
-    try {
-        const user = await User.findOne({ username });
+export const getUserByNameOrId = asyncHandler(async (req, res) => {
+    console.log("getUserByNameOrId API called");
 
+    const usernameOrId = req.params.usernameOrId;
+    try {
+        //check if username or id
+
+        console.log(req.params);
+        console.log("usernameOrId");
+        console.log(usernameOrId);
+
+        console.log(mongoose.Types.ObjectId.isValid(usernameOrId));
+        console.log(mongoose.isValidObjectId(usernameOrId));
+        let user;
+        if (mongoose.isValidObjectId(usernameOrId)) {
+            console.log("id");
+            user = await User.findById(usernameOrId);
+        } else {
+            console.log("usernameOrId is not an id");
+            user = await User.findOne({ username: usernameOrId });
+        }
         if (user) {
-            res.json({
-                message: "User has been fetched",
+            res.status(200).json({
+                message: "User fetched successfully",
                 data: user,
             });
         } else {

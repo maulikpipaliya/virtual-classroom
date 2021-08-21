@@ -5,7 +5,7 @@ import {
     registerUser,
     getUsers,
     createUser,
-    getUserByUsername,
+    getUserByNameOrId,
     signIn,
     updatePassword,
 } from "../controllers/userController.js";
@@ -18,7 +18,8 @@ const router = Router();
 router.route("/").get(protect, admin, getUsers);
 router.route("/").post(protect, admin, createUser);
 router.route("/signIn").post(signIn);
-router.route("/:username").get(protect, getUserByUsername);
+router.route("/:usernameOrId").get(protect, getUserByNameOrId);
+
 // router.route("/register").post(registerUser);
 
 export default router;
