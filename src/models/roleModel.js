@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export const allRoles = ["TUTOR", "STUDENT"];
+export const allRoles = ["TUTOR", "STUDENT", "ADMIN"];
 
 const roleSchema = new mongoose.Schema({
     roleName: {
@@ -28,5 +28,5 @@ roleSchema.pre("save", async function (next) {
     }
 });
 
-const Role = mongoose.model("role", roleSchema);
+const Role = mongoose.model("Role", roleSchema);
 export default Role;

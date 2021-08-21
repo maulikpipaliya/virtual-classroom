@@ -6,17 +6,19 @@ import {
     getUsers,
     createUser,
     getUserByUsername,
-    authenticateUser,
+    signIn,
+    updatePassword,
 } from "../controllers/userController.js";
 
-import { protect } from "../middlewares/auth.js";
+import { protect, admin } from "../middlewares/auth.js";
 
 const router = Router();
 
-router.route("/").get(protect, getUsers);
-router.route("/").post(createUser);
-router.route("/register").post(registerUser);
-router.route("/login").post(authenticateUser);
-router.route("/:username").get(getUserByUsername);
+//Admin routes
+router.route("/").get(protect, admin, getUsers);
+router.route("/").post(protect, admin, createUser);
+router.route("/signIn").post(signIn);
+router.route("/:username").get(protect, getUserByUsername);
+// router.route("/register").post(registerUser);
 
 export default router;

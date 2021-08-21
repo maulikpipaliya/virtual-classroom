@@ -6,9 +6,9 @@ import {
     getAssignments,
     updateAssignment,
     deleteAssignment,
-} from "../controllers/AssignmentController.js";
+} from "../../controllers/AssignmentController.js";
 
-import { protect, student, tutor } from "../middlewares/auth.js";
+import { protect, student, tutor } from "../../middlewares/auth.js";
 
 const router = Router();
 

@@ -5,11 +5,15 @@ const generateAuthToken = (user) => {
     console.log("Signing JWT");
     const { username } = user;
     try {
-        return jwt.sign({ username }, process.env.JWT_PASSWORD, {
-            expiresIn: "1m",
-        });
+        return jwt.sign(
+            { username, role: user.role },
+            process.env.JWT_PASSWORD,
+            {
+                expiresIn: "1d",
+            }
+        );
     } catch (error) {
-        console.log("Error in generating AuthToken");
+        console.error("ERR_GENERATING_TOKEN");
         console.log(error);
     }
 };

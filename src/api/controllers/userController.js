@@ -4,7 +4,7 @@ import User from "../../models/userModel.js";
 import Role from "../../models/roleModel.js";
 import { allRoles } from "../../models/roleModel.js";
 
-const registerUser = asyncHandler(async (req, res, next) => {
+export const registerUser = asyncHandler(async (req, res, next) => {
     //register a user
     const { username, password, roleName } = req.body;
 
@@ -48,12 +48,12 @@ const registerUser = asyncHandler(async (req, res, next) => {
     }
 });
 
-const authenticateUser = asyncHandler(async (req, res) => {
+export const signIn = asyncHandler(async (req, res) => {
     try {
         const userData = req.body;
         const { username, password } = userData;
 
-        console.log("Authenticating user...");
+        console.log("User signing in ...");
         if (!username || !password) {
             return res.status(400).json({
                 message: "Please enter username and password both",
@@ -61,26 +61,30 @@ const authenticateUser = asyncHandler(async (req, res) => {
         }
 
         const existingUser = await User.findOne({ username });
-        // console.log("User password: ", existingUser);
-        console.log("User password: ", existingUser.password);
-        console.log("Form password", password);
-        console.log("Form password", typeof existingUser.password);
-        console.log("Form password", typeof password);
+        // console.log(userData);
 
-        if (
-            existingUser &&
-            String(existingUser.password) === String(password)
-        ) {
+        if (!existingUser) {
+            return res.status(400).json({
+                message: "ERR_INVALID_CREDENTIALS",
+            });
+        }
+
+        if (existingUser && (await existingUser.matchPassword(password))) {
             console.log("Equal");
             const token = generateAuthToken(existingUser);
-            console.log(token);
+
+            const { roleName } = await Role.findById(existingUser.role);
+            console.log(
+                `${existingUser.username} has signed in and role is ${roleName}`
+            );
+
             res.status(200).json({
                 success: true,
                 token,
             });
         } else {
             res.status(400).json({
-                message: "Invalid credentials",
+                message: "ERR_INVALID_PASSWORD",
             });
         }
     } catch (error) {
@@ -90,24 +94,30 @@ const authenticateUser = asyncHandler(async (req, res) => {
     }
 });
 
-const createUser = asyncHandler(async (req, res) => {
+//ADMIN : create User
+export const createUser = asyncHandler(async (req, res) => {
     console.log("createUser API called");
     const user = req.body;
     console.log(user);
+
+    if (!user.username || !user.password || !user.role) {
+        return res.status(400).send({
+            message: "Username, password and role details are required",
+        });
+    }
+
     user.password = user.password.trim();
     user.username = user.username.trim();
+    user.role = user.role.trim().toUpperCase();
 
-    if (!user.password) {
+    if (!allRoles.includes(user.role)) {
         return res.status(400).send({
-            message: "Password is required",
+            message: "Role does not exist. Valid roles: ['STUDENT','TUTOR']",
         });
     }
 
-    if (!user.username) {
-        return res.status(400).send({
-            message: "Username is required",
-        });
-    }
+    const { _id: roleId } = await Role.findOne({ roleName: user.role });
+    user.role = roleId;
 
     try {
         const userCreated = await User.create(user);
@@ -132,7 +142,7 @@ const createUser = asyncHandler(async (req, res) => {
     }
 });
 
-const getUsers = asyncHandler(async (req, res) => {
+export const getUsers = asyncHandler(async (req, res) => {
     console.log("getUsers API called");
     const userID = req.user;
     console.log("userID");
@@ -150,7 +160,7 @@ const getUsers = asyncHandler(async (req, res) => {
     }
 });
 
-const getUserByUsername = asyncHandler(async (req, res) => {
+export const getUserByUsername = asyncHandler(async (req, res) => {
     const username = req.params.username;
     try {
         const user = await User.findOne({ username });
@@ -162,7 +172,7 @@ const getUserByUsername = asyncHandler(async (req, res) => {
             });
         } else {
             res.status(404).send({
-                message: "User not found",
+                message: "ERR_USER_NOT_FOUND",
             });
         }
     } catch (error) {
@@ -172,10 +182,33 @@ const getUserByUsername = asyncHandler(async (req, res) => {
     }
 });
 
-export {
-    registerUser,
-    getUsers,
-    createUser,
-    getUserByUsername,
-    authenticateUser,
-};
+//update password for a user
+export const updatePassword = asyncHandler(async (req, res) => {
+    console.log("updatePassword API called");
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({
+            message: "Please enter username and password both",
+        });
+    }
+
+    try {
+        const user = await User.findOne({ username });
+        if (user) {
+            user.password = password;
+            await user.save();
+            res.json({
+                message: "Password updated successfully",
+            });
+        } else {
+            res.status(400).json({
+                message: "ERR_USER_NOT_FOUND",
+            });
+        }
+    } catch (error) {
+        res.status(400).json({
+            message: error,
+        });
+    }
+});
