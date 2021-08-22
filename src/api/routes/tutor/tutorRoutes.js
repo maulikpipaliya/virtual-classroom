@@ -6,7 +6,7 @@ import {
     updateAssignment,
     deleteAssignment,
 } from "../../controllers/assignmentController.js";
-import { signIn } from "../../controllers/userController.js";
+import { signIn } from "../../controllers/authController.js";
 
 const router = Router();
 
