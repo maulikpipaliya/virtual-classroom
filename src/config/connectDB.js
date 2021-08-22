@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import colors from "colors";
 
-const connectDB = async () => {
+export default async () => {
     console.log(`Connecting to database...`);
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI, {
@@ -19,5 +19,3 @@ const connectDB = async () => {
         // process.exit(1);
     }
 };
-
-export default connectDB;

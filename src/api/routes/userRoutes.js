@@ -1,25 +1,10 @@
 import { Router } from "express";
-// import { protect, tutor, student } from "../middlewares/auth.js";
 
-import {
-    registerUser,
-    getUsers,
-    createUser,
-    getUserByNameOrId,
-    signIn,
-    updatePassword,
-} from "../controllers/userController.js";
-
-import { protect, admin } from "../middlewares/auth.js";
+import { signIn } from "../controllers/userController.js";
 
 const router = Router();
 
-//Admin routes
-router.route("/").get(protect, admin, getUsers);
-router.route("/").post(protect, admin, createUser);
+//Admin, Tutor, Student : sign in the system
 router.route("/signIn").post(signIn);
-router.route("/:usernameOrId").get(protect, getUserByNameOrId);
-
-// router.route("/register").post(registerUser);
 
 export default router;
