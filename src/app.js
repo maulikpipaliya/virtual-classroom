@@ -4,14 +4,13 @@ import {
     setUpExpressServer,
     setUpMiddlewares,
     setUpSwagger,
-} from "./config/index.js";
+} from "./config/setup.js";
 
 const app = setUpExpressServer();
 
-await setUpDatabaseConnection();
-
 setUpRoutes(app);
 
-setUpSwagger(app);
+await setUpDatabaseConnection();
 
+// setUpSwagger(app);
 setUpMiddlewares(app);

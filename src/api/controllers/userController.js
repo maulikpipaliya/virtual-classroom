@@ -65,7 +65,7 @@ export const updatePassword = asyncHandler(async (req, res) => {
         if (user) {
             user.password = password;
             await user.save();
-            res.json({
+            res.status(200).json({
                 message: "Password updated successfully",
             });
         } else {

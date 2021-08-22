@@ -28,7 +28,7 @@ export const signIn = asyncHandler(async (req, res) => {
 
         if (existingUser && (await existingUser.matchPassword(password))) {
             console.log("Equal");
-            const token = generateAuthToken(existingUser);
+            const token = await generateAuthToken(existingUser);
 
             console.log("token");
             console.log(token);

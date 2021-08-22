@@ -12,7 +12,6 @@ const router = Router();
 
 import { protect, tutor } from "../../middlewares/auth.js";
 
-router.route("/signIn").post(signIn);
 router.route("/createAssignment").post(protect, tutor, createAssignment);
 router.route("/getAssignment").get(protect, tutor, getAssignment);
 router.route("/updateAssignment").put(protect, tutor, updateAssignment);

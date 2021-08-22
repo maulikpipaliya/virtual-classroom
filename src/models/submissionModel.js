@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 export const submissionStatusScope = ["SUBMITTED", "PENDING", "OVERDUE"];
 
 const submissionSchema = new mongoose.Schema({
-    assignmentID: {
+    assignmentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Assignment",
         required: true,
     },
-    studentID: {
+    studentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true,
@@ -16,6 +16,7 @@ const submissionSchema = new mongoose.Schema({
     status: {
         type: String,
         required: true,
+        default: "PENDING",
     },
     date: {
         type: Date,

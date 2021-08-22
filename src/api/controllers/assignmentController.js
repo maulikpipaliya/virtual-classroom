@@ -3,6 +3,7 @@ import generateAuthToken from "../../services/auth.js";
 import User from "../../models/userModel.js";
 import Role from "../../models/roleModel.js";
 import Assignment from "../../models/assignmentModel.js";
+import Submission from "../../models/submissionModel.js";
 import { assignmentStatusScope } from "../../models/assignmentModel.js";
 import { student, tutor } from "../middlewares/auth.js";
 import {
@@ -59,21 +60,45 @@ export const getAssignmentOld = asyncHandler(async (req, res, next) => {
     });
 });
 
-// TUTOR: get all assignments for a tutor
+//tutor + student -> get all assignments
 export const getAllAssignments = asyncHandler(async (req, res, next) => {
     console.log("getAllAssignments API Called");
     console.log(req.user);
 
+    //get query params
+
+    const { status, publishDate } = req.query;
+
+    console.log(req.query);
+
     const { _id: userId } = req.user;
 
-    const roleDetails = await getRoleFromUserId(userId);
+    const roleName = req.roleName;
 
-    if (roleDetails && roleDetails.roleName === "TUTOR") {
+    console.log("req.params");
+    console.log(req.params);
+
+    if (roleName === "TUTOR") {
         //return all the assignments
         console.log("IS TUTOR");
-        const assignments = await Assignment.find({
+        let assignments = await Assignment.find({
             createdBy: userId,
         });
+
+        if (status) {
+            console.log("status filter is applied");
+            assignments = assignments.filter(
+                (assignment) =>
+                    status.toUpperCase() === assignment.status.toUpperCase()
+            );
+        }
+        if (publishDate) {
+            console.log("publishDate filter is applied");
+            assignments = assignments.filter(
+                (assignment) =>
+                    assignment.publishDate.getTime() === publishDate.getTime()
+            );
+        }
 
         // send response
         res.status(200).json({
@@ -85,12 +110,28 @@ export const getAllAssignments = asyncHandler(async (req, res, next) => {
         });
     }
 
-    if (roleDetails && roleDetails.roleName === "STUDENT") {
+    if (roleName === "STUDENT") {
         //return all assigned assignments
         console.log("IS STUDENT");
-        const assignments = await Assignment.find({
+        let assignments = await Assignment.find({
             assignedTo: userId,
         });
+
+        console.log(assignments);
+        if (status) {
+            console.log("status filter is applied");
+            assignments = assignments.filter(
+                (assignment) =>
+                    status.toUpperCase() === assignment.status.toUpperCase()
+            );
+        }
+        if (publishDate) {
+            console.log("publishDate filter is applied");
+            assignments = assignments.filter(
+                (assignment) =>
+                    assignment.publishDate.getTime() === publishDate.getTime()
+            );
+        }
 
         // send response
         res.status(200).json({
@@ -109,6 +150,14 @@ export const updateAssignment = asyncHandler(async (req, res, next) => {
 
     // find assignment
     const assignment = await Assignment.findById(req.params.id);
+
+    //check if assignment belongs to the user
+    if (assignment.createdBy.toString() !== req.user._id.toString()) {
+        res.status(403).json({
+            success: false,
+            message: "You are not authorized to update this assignment",
+        });
+    }
 
     if (assignment && req.body && Object.keys(req.body).length > 0) {
         Object.keys(req.body).map((key) => {
@@ -158,19 +207,41 @@ export const getAssignmentSubmissions = asyncHandler(async (req, res, next) => {
 
 //Tutor + Student : Get the details of an assignment
 export const getAssignment = asyncHandler(async (req, res, next) => {
+    console.log("getAssignment API Called");
+
+    if (!req.user) {
+        res.status(403).json({
+            success: false,
+            message: "You are not authorized to view this assignment",
+        });
+    }
+
+    const roleName = req.roleName;
+
+    const assignmentId = req.params.id;
+    //verify if the assignment belongs to the user
+    const assignment = await Assignment.findById(assignmentId);
+
     const { _id } = req.user;
 
-    if (getRoleFromUserId(_id) && getRoleFromUserId(_id).roleName === "TUTOR") {
+    const roleDetails = await getRoleFromUserId(_id);
+
+    if (roleName === "TUTOR") {
         console.log("TUTOR is working");
     }
 
     if (roleName === "TUTOR") {
         //return all the assignments with submissions
         console.log("IS TUTOR");
-        const assignment = await Assignment.findById(req.params.id);
-        const submissions = await Assignment.findById(req.params.id).populate(
-            "submissions"
-        );
+
+        if (assignment.createdBy.toString() !== req.user._id.toString()) {
+            res.status(403).json({
+                success: false,
+                message: "You are not authorized to view this assignment",
+            });
+        }
+
+        const submissions = await Submission.findById(assignmentId);
         // send response
         res.status(200).json({
             success: true,
@@ -184,16 +255,21 @@ export const getAssignment = asyncHandler(async (req, res, next) => {
     if (roleName === "STUDENT") {
         //return student's submission
         console.log("IS STUDENT");
+
+        const { _id: studentId } = req.user;
+
         const submission = await Submission.findOne({
-            assignmentId: req.params.id,
-            userId: _id,
+            assignmentId,
+            studentId,
         });
+
         // send response
         res.status(200).json({
             success: true,
             data: {
                 submission,
                 user: req.user,
+                assignment,
             },
         });
     }
@@ -281,12 +357,51 @@ export const uploadAssignment = asyncHandler(async (req, res, next) => {
 
     console.log("Upload API called");
     try {
+        console.log(req.user);
+        const { id: assignmentId } = req.params;
+        const { _id: studentId } = req.user;
+
         await uploadFile(req, res);
 
-        if (req.file == undefined) {
+        console.log("req.file");
+        console.log(req.file);
+
+        if (req.file === undefined) {
             return res
                 .status(400)
                 .send({ message: "File is undefined or not provided!" });
+        }
+
+        console.log("submission start");
+        //update the assignment , change content
+        // const submission = await Submission.findOne({
+        //     assignmentId,
+        //     studentId: req.user._id,
+        // });
+
+        const submission = await Submission.findOne({
+            assignmentId,
+            studentId: req.user._id,
+        });
+
+        if (!submission) {
+            await Submission.create({
+                assignmentId,
+                studentId: req.user._id,
+                content: req.file.originalname,
+            });
+        } else {
+            await Submission.findOneAndUpdate(
+                {
+                    assignmentId,
+                    studentId: req.user._id,
+                },
+                {
+                    $set: {
+                        content: req.file.originalname,
+                    },
+                }
+            );
         }
 
         res.status(200).send({
@@ -300,17 +415,43 @@ export const uploadAssignment = asyncHandler(async (req, res, next) => {
 });
 
 export const submitAssignment = asyncHandler(async (req, res, next) => {
-    console.log("submitAssignment API Called");
-    const { id: assignmentId } = req.params;
-    const { file } = req.files;
-    const { _id: studentId } = req.user;
-    const student = await User.findById(studentId);
-    const assignment = await Assignment.findById(assignmentId);
-    const submission = await Submission.findOne({
-        assignmentId: assignmentId,
-        userId: studentId,
-    });
+    try {
+        console.log("submitAssignment API Called");
+        const { id: assignmentId } = req.params;
+        const { _id: studentId } = req.user;
 
-    //receive the file and save it in content
-    const content = file.path;
+        const submission = await Submission.findOne({
+            assignmentId,
+            studentId: req.user._id,
+        });
+
+        if (submission) {
+            await Submission.findOneAndUpdate(
+                {
+                    assignmentId,
+                    studentId,
+                },
+                {
+                    $set: {
+                        status: "SUBMITTED",
+                    },
+                }
+            );
+        } else {
+            //create submission
+            await Submission.create({
+                assignmentId,
+                studentId,
+                status: "SUBMITTED",
+            });
+        }
+
+        res.status(200).send({
+            message: "Submitted the assignment successfully",
+        });
+    } catch (error) {
+        res.status(500).send({
+            message: `Could not submit the assignment: ${error}`,
+        });
+    }
 });

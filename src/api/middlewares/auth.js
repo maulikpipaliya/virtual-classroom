@@ -3,10 +3,12 @@ import asyncHandler from "express-async-handler";
 import User from "../../models/userModel.js";
 import colors from "colors";
 import Role from "../../models/roleModel.js";
+import Assignment from "../../models/assignmentModel.js";
 import { getRoleFromUserId } from "../../models/modelHelpers.js";
 
 export const protect = asyncHandler(async (req, res, next) => {
     console.log("Verifying that user is authenticated");
+
     let reqAuth = req.headers.authorization;
 
     let token;
@@ -26,7 +28,10 @@ export const protect = asyncHandler(async (req, res, next) => {
                 role: decoded.role,
             }).select("-password");
 
+            req.roleName = decoded.roleName;
+
             console.log("User is authenticated".green);
+
             return next();
         } catch (error) {
             console.error(error);
@@ -44,10 +49,10 @@ export const protect = asyncHandler(async (req, res, next) => {
 export const admin = asyncHandler(async (req, res, next) => {
     console.log("Verifying that user is admin");
 
-    try {
-        const roleDetails = await getRoleFromUserId(req.user._id);
+    const roleName = req.roleName;
 
-        if (roleDetails && roleDetails.roleName === "ADMIN") {
+    try {
+        if (roleName === "ADMIN") {
             console.log("Verified that user is admin".green);
             next();
         } else {
@@ -66,8 +71,9 @@ export const admin = asyncHandler(async (req, res, next) => {
 
 export const tutor = asyncHandler(async (req, res, next) => {
     try {
-        const roleDetails = await getRoleFromUserId(req.user._id);
-        if (roleDetails && roleDetails.roleName === "TUTOR") {
+        const roleName = req.roleName;
+
+        if (roleName === "TUTOR") {
             console.log("Verified that user is tutor".green);
             next();
         } else {
@@ -78,7 +84,7 @@ export const tutor = asyncHandler(async (req, res, next) => {
         }
     } catch (error) {
         res.status(401).send({
-            message: "ERR_NOT_AUTHORIZED_NO_STUDENT",
+            message: "ERR_NOT_AUTHORIZED_NO_TUTOR",
             error,
         });
     }
@@ -87,10 +93,13 @@ export const tutor = asyncHandler(async (req, res, next) => {
 export const student = asyncHandler(async (req, res, next) => {
     try {
         console.log("Verifying that user is student".red);
-        const roleDetails = await getRoleFromUserId(req.user._id);
 
-        if (roleDetails && roleDetails.roleName === "STUDENT") {
+        const roleName = req.roleName;
+
+        if (roleName === "STUDENT") {
             console.log("Verified that user is student".green);
+            console.log("req.user");
+            console.log(req.user);
             next();
         } else {
             console.log("User is not a student".red);
@@ -101,6 +110,61 @@ export const student = asyncHandler(async (req, res, next) => {
     } catch (error) {
         res.status(401).send({
             message: "ERR_NOT_AUTHORIZED_NO_STUDENT",
+            error,
+        });
+    }
+});
+
+export const hasAccessToAssignment = asyncHandler(async (req, res, next) => {
+    console.log("Verifying that user has access to assignment".red);
+    try {
+        const userId = req.user._id;
+        const roleName = req.roleName;
+        const assignmentId = req.params.id;
+
+        if (roleName === "TUTOR") {
+            const tutorHasAccess = await Assignment.findOne({
+                createdBy: userId,
+                _id: assignmentId,
+            });
+            if (tutorHasAccess) {
+                console.log(
+                    "Verified that user has access to assignment".green
+                );
+                next();
+            } else {
+                console.log("User does not have access to assignment".red);
+                return res.status(401).send({
+                    message: "ERR_NOT_AUTHORIZED_TO_ASSIGNMENT",
+                });
+            }
+        }
+
+        if (roleName === "STUDENT") {
+            console.log(
+                `User ${userId} is trying to access assignment ${assignmentId}`
+            );
+
+            const hasAccess = await Assignment.findOne({
+                _id: assignmentId,
+                assignedTo: userId,
+            });
+
+            if (hasAccess) {
+                console.log(
+                    "Verified that user has access to assignment".green
+                );
+                next();
+            } else {
+                console.log("User does not have access to assignment".red);
+                return res.status(401).send({
+                    message: "ERR_NOT_AUTHORIZED_TO_ASSIGNMENT",
+                });
+            }
+        }
+    } catch (error) {
+        return res.status(401).send({
+            message: "ERR_NOT_AUTHORIZED_TO_ASSIGNMENT",
             error,
         });
     }
